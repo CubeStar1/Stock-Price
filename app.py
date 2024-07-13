@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 st.set_page_config(layout="wide")
 
 
-soxx_stocks = ['AVGO', 'NVDA', 'AMD', 'AMAT', 'QCOM', 'LRCX', 'TSM', 'KLAC', 'INTC', 'MRVL', 'MU', 'MPWR', 'TXN', 'ASML', 'NXPI', 'ADI', 'MCHP', 'ON', 'TER', 'ENTG', 'SWKS', 'QRVO', 'STM', 'MKSI', 'ASX', 'LSCC', 'RMBS', 'UMC', 'ACLS', 'WOLF', 'TOELY']
+soxx_stocks = ['AVGO', 'NVDA', 'AMD', 'AMAT', 'QCOM', 'LRCX', 'TSM', 'KLAC', 'INTC', 'MRVL', 'MU', 'MPWR', 'TXN', 'ASML', 'NXPI', 'ADI', 'MCHP', 'ON', 'TER', 'ENTG', 'SWKS', 'QRVO', 'STM', 'MKSI', 'ASX', 'LSCC', 'RMBS', 'UMC', 'ACLS', 'WOLF', '7203.T']
 
 conn = sqlite3.connect('soxx_stock_data.db')
 c = conn.cursor()
@@ -20,6 +20,14 @@ c.execute('''
         percent_change REAL
     )
 ''')
+# Create table for storing custom stock lists if it doesn't exist
+c.execute('''
+    CREATE TABLE IF NOT EXISTS stock_lists (
+        list_name TEXT,
+        tickers TEXT
+    )
+''')
+
 
 if 'combined_quarterly' not in st.session_state:
     st.session_state['combined_quarterly'] = pd.DataFrame()
@@ -90,29 +98,71 @@ def get_last_n_years(n):
     years_list = [str(current_year - i) for i in range(n)]
     return years_list[::-1]
 
+# Function to save custom stock list
+def save_stock_list(name, tickers):
+    tickers_str = ",".join(tickers)
+    c.execute('''
+        INSERT INTO stock_lists (list_name, tickers) VALUES (?, ?)
+    ''', (name, tickers_str))
+    conn.commit()
+# Function to delete custom stock list
+def delete_stock_list(name):
+    c.execute('''
+        DELETE FROM stock_lists WHERE list_name = ?
+    ''', (name,))
+    conn.commit()
+# Function to load custom stock lists
+def load_stock_lists():
+    c.execute('''
+        SELECT list_name, tickers FROM stock_lists
+    ''')
+    rows = c.fetchall()
+    return {row[0]: row[1].split(",") for row in rows}
+
 st.title("Quarterly Percentage Change in SOXX Stock Prices")
 st.write("This dashboard compares the percentage change in stock prices of SOXX component stocks over selected quarters.")
 quarters = ["Q1", "Q2", "Q3", "Q4"]
 years = [str(year) for year in range(2015, datetime.now().year + 1)]
 with st.sidebar:
-    st.markdown("### Instructions")
-    st.write("1. Select the SOXX component stocks you want to compare.")
-    st.write("2. Select the quarters you want to compare.")
-    st.write("3. Click the 'Compare' button to display the percentage change in stock prices.")
-    st.write("4. The percentage change in stock prices will be displayed as a bar chart.")
-    st.write("5. The data will be stored in a SQLite database for future use.")
-    with st.popover("Select the SOXX component stocks you want to compare.", use_container_width=True):
-        selected_tickers = st.multiselect(
-            "Select SOXX component stocks:",
-            options=soxx_stocks,
-            default=['AMAT', 'ASML', 'KLAC', 'TOELY', 'LRCX']
-        )
-        select_all = st.checkbox("Select All")
-        if select_all:
-            selected_tickers = soxx_stocks
+    with st.container(border=True):
+        stock_entry_mode = st.radio("Select Stock Entry Mode", ("Select SOXX Stocks", "Create Custom Stock List"))
+    if stock_entry_mode == "Select SOXX Stocks":
+        with st.container(border=True):
+            st.header("Select Stocks")
+            with st.popover("Select the SOXX component stocks you want to compare.", use_container_width=True):
+                selected_tickers = st.multiselect(
+                    "Select SOXX component stocks:",
+                    options=soxx_stocks,
+                    default=['AMAT', 'ASML', 'KLAC', '7203.T', 'LRCX']
+                )
+                select_all = st.checkbox("Select All")
+                if select_all:
+                    selected_tickers = soxx_stocks
+    elif stock_entry_mode == "Create Custom Stock List":
+        with st.container(border=True):
+            st.header("Custom Stock Lists")
+            stock_lists = load_stock_lists()
+            with st.form(key="create_stock_list_form"):
+                new_list_name = st.text_input("New List Name")
+                new_list_tickers = st.text_area("Tickers (comma-separated)")
+                submit_button = st.form_submit_button("Create List", use_container_width=True)
+                if submit_button and new_list_name and new_list_tickers:
+                    save_stock_list(new_list_name, [ticker.strip() for ticker in new_list_tickers.split(",")])
+                    st.success(f"List '{new_list_name}' created successfully!")
+                    st.rerun()
+
+            # Select an existing custom stock list
+            selected_list_name = st.selectbox("Select Stock List", options=[""] + list(stock_lists.keys()))
+            selected_tickers = stock_lists.get(selected_list_name, [])
+            # Delete a custom stock list
+            if selected_list_name:
+                if st.button("Delete Selected List", use_container_width=True):
+                    delete_stock_list(selected_list_name)
+                    st.success(f"List '{selected_list_name}' deleted successfully!")
+                    st.rerun()
 
     with st.container(border=True):
-        compare_option = st.radio("Compare by:", ("Quarters", "Entire Year"))
+        compare_option = st.radio("Compare by:", ("Quarters", "Calendar Year"))
 
 
 if compare_option == "Quarters":
@@ -194,8 +244,9 @@ if compare_option == "Quarters":
         combined_df.rename(columns={'index': 'Company'}, inplace=True)
         combined_df = combined_df.round(2)
         st.write("### Combined Percentage Change Table")
-        st.dataframe(combined_df.sort_values("Company"), use_container_width=True, hide_index=True)
-elif compare_option == "Entire Year":
+        with st.container(border=True):
+            st.dataframe(combined_df.sort_values("Company"), use_container_width=True, hide_index=True)
+elif compare_option == "Calendar Year":
 
     num_years = st.slider("Select the number of years to compare:", min_value=2, max_value=10, value=4, step=1)
     # Dropdowns for user to select the years
@@ -258,6 +309,8 @@ elif compare_option == "Entire Year":
                 st.markdown(f"### {selected_years[i]}")
                 st.bar_chart(data[i].set_index('Company'))
 
-        st.write("### Combined Percentage Change Table")
-        st.dataframe(combined_df.sort_values("Company"), use_container_width=True, hide_index=True)
+        with st.container(border=True):
+            st.write("### Combined Percentage Change Table")
+            st.dataframe(combined_df.sort_values("Company"), use_container_width=True, hide_index=True)
+
 conn.close()
