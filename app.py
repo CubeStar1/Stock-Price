@@ -191,7 +191,7 @@ if compare_option == "Quarters":
         combined_df.rename(columns={'index': 'Company'}, inplace=True)
         combined_df = combined_df.round(2)
         st.write("### Combined Percentage Change Table")
-        st.dataframe(st.session_state['combined_quarterly'].sort_values("Company"), use_container_width=True, hide_index=True)
+        st.dataframe(combined_df.sort_values("Company"), use_container_width=True, hide_index=True)
 elif compare_option == "Entire Year":
 
     num_years = st.slider("Select the number of years to compare:", min_value=2, max_value=10, value=4, step=1)
