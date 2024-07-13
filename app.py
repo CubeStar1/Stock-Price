@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 st.set_page_config(layout="wide")
 
 
-soxx_stocks = ['AVGO', 'NVDA', 'AMD', 'AMAT', 'QCOM', 'LRCX', 'TSM', 'KLAC', 'INTC', 'MRVL', 'MU', 'MPWR', 'TXN', 'ASML', 'NXPI', 'ADI', 'MCHP', 'ON', 'TER', 'ENTG', 'SWKS', 'QRVO', 'STM', 'MKSI', 'ASX', 'LSCC', 'RMBS', 'UMC', 'ACLS', 'WOLF']
+soxx_stocks = ['AVGO', 'NVDA', 'AMD', 'AMAT', 'QCOM', 'LRCX', 'TSM', 'KLAC', 'INTC', 'MRVL', 'MU', 'MPWR', 'TXN', 'ASML', 'NXPI', 'ADI', 'MCHP', 'ON', 'TER', 'ENTG', 'SWKS', 'QRVO', 'STM', 'MKSI', 'ASX', 'LSCC', 'RMBS', 'UMC', 'ACLS', 'WOLF', 'TOELY']
 
 conn = sqlite3.connect('soxx_stock_data.db')
 c = conn.cursor()
@@ -105,8 +105,11 @@ with st.sidebar:
         selected_tickers = st.multiselect(
             "Select SOXX component stocks:",
             options=soxx_stocks,
-            default=soxx_stocks
+            default=['AMAT', 'ASML', 'KLAC', 'TOELY', 'LRCX']
         )
+        select_all = st.checkbox("Select All")
+        if select_all:
+            selected_tickers = soxx_stocks
 
     with st.container(border=True):
         compare_option = st.radio("Compare by:", ("Quarters", "Entire Year"))
