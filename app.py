@@ -5,11 +5,6 @@ import matplotlib.pyplot as plt
 import sqlite3
 from datetime import datetime, timedelta
 st.set_page_config(layout="wide")
-# soxx_stocks = [
-#     'AMD', 'ADI', 'AMAT', 'ASML', 'AVGO', 'CDNS', 'ENTG', 'KLAC', 'LRCX', 'MRVL',
-#     'MPWR', 'MCHP', 'MU', 'NXPI', 'ON', 'QCOM', 'SIMO', 'SWKS', 'TER', 'TSM',
-#     'TXN', 'UMC', 'XLNX'
-# ]
 
 
 soxx_stocks = ['AVGO', 'NVDA', 'AMD', 'AMAT', 'QCOM', 'LRCX', 'TSM', 'KLAC', 'INTC', 'MRVL', 'MU', 'MPWR', 'TXN', 'ASML', 'NXPI', 'ADI', 'MCHP', 'ON', 'TER', 'ENTG', 'SWKS', 'QRVO', 'STM', 'MKSI', 'ASX', 'LSCC', 'RMBS', 'UMC', 'ACLS', 'WOLF']
@@ -25,6 +20,9 @@ c.execute('''
         percent_change REAL
     )
 ''')
+
+if 'combined_quarterly' not in st.session_state:
+    st.session_state['combined_quarterly'] = pd.DataFrame()
 
 def get_stock_data(tickers, start_date, end_date):
     data = {}
@@ -62,6 +60,18 @@ def get_date_range(year, quarter):
     elif quarter == "Q4":
         return f"{year}-10-01", f"{year}-12-31"
 
+# Function to get the last four quarters based on the current date
+def get_last_four_quarters():
+    current_date = datetime.now()
+    quarters = []
+    for i in range(4):
+        year = current_date.year
+        quarter = (current_date.month - 1) // 3 + 1
+        quarters.append((f"Q{quarter}", str(year)))
+        current_date -= timedelta(days=90)  # Move to the previous quarter
+    return quarters[::-1]  # Reverse the list to get the last four quarters in order
+
+
 st.title("Quarterly Percentage Change in SOXX Stock Prices")
 st.write("This dashboard compares the percentage change in stock prices of SOXX component stocks over selected quarters.")
 colu1, colu2 = st.columns([1,3])
@@ -85,25 +95,33 @@ with st.sidebar:
 
 
 if compare_option == "Quarters":
+    last_four_quarters = get_last_four_quarters()
+
     quarters = ["Q1", "Q2", "Q3", "Q4"]
     years = [str(year) for year in range(2015, datetime.now().year + 1)]
     col1, col2 = st.columns(2)
     selected_quarters = []
     graphs = []
+    # Initialize a dictionary to hold the percentage changes
+    combined_data = {ticker: [] for ticker in selected_tickers}
     for i in range(1, 5):
         if i % 2 != 0:
             with col1:
                 with st.container(border=True):
-                    quarter = st.selectbox(f"Select Quarter {i}:", quarters, key=f"quarter_{i}", index=i-1)
-                    year = st.selectbox(f"Select Year {i}:", years, key=f"year_{i}", index=i-1)
+                    quarter = st.selectbox(f"Select Quarter {i}:", quarters, key=f"quarter_{i}",
+                                           index=quarters.index(last_four_quarters[i - 1][0]))
+                    year = st.selectbox(f"Select Year {i}:", years, key=f"year_{i}",
+                                        index=years.index(last_four_quarters[i - 1][1]))
                     selected_quarters.append((quarter, year))
                     graph = st.empty()
                     graphs.append(graph)
         else:
             with col2:
                 with st.container(border=True):
-                    quarter = st.selectbox(f"Select Quarter {i}:", quarters, key=f"quarter_{i}", index=i-1)
-                    year = st.selectbox(f"Select Year {i}:", years, key=f"year_{i}", index=i-1)
+                    quarter = st.selectbox(f"Select Quarter {i}:", quarters, key=f"quarter_{i}",
+                                           index=quarters.index(last_four_quarters[i - 1][0]))
+                    year = st.selectbox(f"Select Year {i}:", years, key=f"year_{i}",
+                                        index=years.index(last_four_quarters[i - 1][1]))
                     selected_quarters.append((quarter, year))
                     graph = st.empty()
                     graphs.append(graph)
@@ -129,6 +147,9 @@ if compare_option == "Quarters":
             df = df.sort_values(by='Percentage Change', ascending=False)
 
             data.append(df)
+            # Update combined_data with the percentage changes
+            for ticker in selected_tickers:
+                combined_data[ticker].append(filtered_stock_data.get(ticker, 0.0))
 
             ax = axs[i]
             ax.bar(df['Company'], df['Percentage Change'], color='skyblue')
@@ -137,12 +158,23 @@ if compare_option == "Quarters":
             ax.set_title(f"Percentage Change in SOXX Stock Prices ({quarter} {year})")
             ax.tick_params(axis='x', rotation=90)
 
+
         for i, graph in enumerate(graphs):
+
             with graph:
                 st.markdown(f"### {selected_quarters[i][0]} {selected_quarters[i][1]}")
                 st.bar_chart(data[i].set_index('Company'))
+        with st.expander("Show Combined Plot", expanded=True):
+            st.pyplot(fig)
 
-        st.pyplot(fig)
+        combined_df = pd.DataFrame.from_dict(combined_data, orient='index',
+                                             columns=[f"{quarter} {year}" for quarter, year in selected_quarters])
+        combined_df.reset_index(inplace=True)
+        combined_df.rename(columns={'index': 'Company'}, inplace=True)
+        combined_df = combined_df.round(2)
+        st.session_state['combined_quarterly'] = combined_df
+        st.write("### Combined Percentage Change Table")
+        st.dataframe(st.session_state['combined_quarterly'].sort_values("Company"), use_container_width=True, hide_index=True)
 elif compare_option == "Entire Year":
     # Dropdowns for user to select the years
     years = [str(year) for year in range(2015, datetime.now().year + 1)]
