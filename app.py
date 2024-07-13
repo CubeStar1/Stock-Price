@@ -64,66 +64,135 @@ def get_date_range(year, quarter):
 
 st.title("Quarterly Percentage Change in SOXX Stock Prices")
 st.write("This dashboard compares the percentage change in stock prices of SOXX component stocks over selected quarters.")
+colu1, colu2 = st.columns([1,3])
 
-selected_tickers = st.multiselect(
-    "Select SOXX component stocks:",
-    options=soxx_stocks,
-    default=soxx_stocks
-)
+with st.sidebar:
+    st.markdown("### Instructions")
+    st.write("1. Select the SOXX component stocks you want to compare.")
+    st.write("2. Select the quarters you want to compare.")
+    st.write("3. Click the 'Compare' button to display the percentage change in stock prices.")
+    st.write("4. The percentage change in stock prices will be displayed as a bar chart.")
+    st.write("5. The data will be stored in a SQLite database for future use.")
+    with st.popover("Select the SOXX component stocks you want to compare.", use_container_width=True):
+        selected_tickers = st.multiselect(
+            "Select SOXX component stocks:",
+            options=soxx_stocks,
+            default=soxx_stocks
+        )
 
-quarters = ["Q1", "Q2", "Q3", "Q4"]
-years = [str(year) for year in range(2015, datetime.now().year + 1)]
-col1, col2 = st.columns(2)
-selected_quarters = []
-for i in range(1, 5):
-    if i % 2 != 0:
-        with col1:
-            with st.container(border=True):
-                quarter = st.selectbox(f"Select Quarter {i}:", quarters, key=f"quarter_{i}")
-                year = st.selectbox(f"Select Year {i}:", years, key=f"year_{i}")
-                selected_quarters.append((quarter, year))
-                graph = st.empty()
-    else:
-        with col2:
-            with st.container(border=True):
-                quarter = st.selectbox(f"Select Quarter {i}:", quarters, key=f"quarter_{i}")
-                year = st.selectbox(f"Select Year {i}:", years, key=f"year_{i}")
-                selected_quarters.append((quarter, year))
+    with st.container(border=True):
+        compare_option = st.radio("Compare by:", ("Quarters", "Entire Year"))
 
-if selected_tickers:
-    fig, axs = plt.subplots(2, 2, figsize=(15, 15))
-    axs = axs.flatten()
 
-    for i, (quarter, year) in enumerate(selected_quarters):
-        start_date, end_date = get_date_range(year, quarter)
-
-        stock_data = fetch_stock_data(start_date, end_date)
-
-        if not stock_data:
-            stock_data = get_stock_data(selected_tickers, start_date, end_date)
-            store_stock_data(stock_data, start_date, end_date)
-
-        filtered_stock_data = {ticker: stock_data[ticker] for ticker in selected_tickers if ticker in stock_data}
-
-        df = pd.DataFrame(list(filtered_stock_data.items()), columns=['Company', 'Percentage Change'])
-
-        df = df.sort_values(by='Percentage Change', ascending=False)
-
-        ax = axs[i]
-        ax.bar(df['Company'], df['Percentage Change'], color='skyblue')
-        ax.set_xlabel("Company")
-        ax.set_ylabel("Percentage Change (%)")
-        ax.set_title(f"Percentage Change in SOXX Stock Prices ({quarter} {year})")
-        ax.tick_params(axis='x', rotation=90)
-        if i%2 == 0:
+if compare_option == "Quarters":
+    quarters = ["Q1", "Q2", "Q3", "Q4"]
+    years = [str(year) for year in range(2015, datetime.now().year + 1)]
+    col1, col2 = st.columns(2)
+    selected_quarters = []
+    graphs = []
+    for i in range(1, 5):
+        if i % 2 != 0:
             with col1:
-                st.markdown(f"### {quarter} {year}")
-                st.bar_chart(x='Company', y='Percentage Change', data=df, use_container_width=True, x_label='Company', y_label='Percentage Change (%)')
+                with st.container(border=True):
+                    quarter = st.selectbox(f"Select Quarter {i}:", quarters, key=f"quarter_{i}", index=i-1)
+                    year = st.selectbox(f"Select Year {i}:", years, key=f"year_{i}", index=i-1)
+                    selected_quarters.append((quarter, year))
+                    graph = st.empty()
+                    graphs.append(graph)
         else:
             with col2:
-                st.markdown(f"### {quarter} {year}")
-                st.bar_chart(x='Company', y='Percentage Change', data=df, use_container_width=True, x_label='Company', y_label='Percentage Change (%)')
+                with st.container(border=True):
+                    quarter = st.selectbox(f"Select Quarter {i}:", quarters, key=f"quarter_{i}", index=i-1)
+                    year = st.selectbox(f"Select Year {i}:", years, key=f"year_{i}", index=i-1)
+                    selected_quarters.append((quarter, year))
+                    graph = st.empty()
+                    graphs.append(graph)
 
-    st.pyplot(fig)
+    if selected_tickers:
+        data = []
+        fig, axs = plt.subplots(2, 2, figsize=(15, 15))
+        axs = axs.flatten()
 
+        for i, (quarter, year) in enumerate(selected_quarters):
+            start_date, end_date = get_date_range(year, quarter)
+
+            stock_data = fetch_stock_data(start_date, end_date)
+
+            if not stock_data:
+                stock_data = get_stock_data(selected_tickers, start_date, end_date)
+                store_stock_data(stock_data, start_date, end_date)
+
+            filtered_stock_data = {ticker: stock_data[ticker] for ticker in selected_tickers if ticker in stock_data}
+
+            df = pd.DataFrame(list(filtered_stock_data.items()), columns=['Company', 'Percentage Change'])
+
+            df = df.sort_values(by='Percentage Change', ascending=False)
+
+            data.append(df)
+
+            ax = axs[i]
+            ax.bar(df['Company'], df['Percentage Change'], color='skyblue')
+            ax.set_xlabel("Company")
+            ax.set_ylabel("Percentage Change (%)")
+            ax.set_title(f"Percentage Change in SOXX Stock Prices ({quarter} {year})")
+            ax.tick_params(axis='x', rotation=90)
+
+        for i, graph in enumerate(graphs):
+            with graph:
+                st.markdown(f"### {selected_quarters[i][0]} {selected_quarters[i][1]}")
+                st.bar_chart(data[i].set_index('Company'))
+
+        st.pyplot(fig)
+elif compare_option == "Entire Year":
+    # Dropdowns for user to select the years
+    years = [str(year) for year in range(2015, datetime.now().year + 1)]
+    selected_years = []
+    graphs = []
+    col1, col2 = st.columns(2)
+    for i in range(1, 5):
+
+        if i % 2 != 0:
+            with col1:
+                with st.container(border=True):
+                    year = st.selectbox(f"Select Year {i}:", years, key=f"year_{i}_entire")
+                    selected_years.append(year)
+                    graph = st.empty()
+                    graphs.append(graph)
+        else:
+            with col2:
+                with st.container(border=True):
+                    year = st.selectbox(f"Select Year {i}:", years, key=f"year_{i}_entire")
+                    selected_years.append(year)
+                    graph = st.empty()
+                    graphs.append(graph)
+
+    if selected_tickers:
+        data = []
+        for i, year in enumerate(selected_years):
+            start_date = f"{year}-01-01"
+            end_date = f"{year}-12-31"
+
+            # Check if data exists in database
+            stock_data = fetch_stock_data(start_date, end_date)
+
+            # If no data in database, fetch from API and store in database
+            if not stock_data:
+                stock_data = get_stock_data(selected_tickers, start_date, end_date)
+                store_stock_data(stock_data, start_date, end_date)
+
+            # Filter the data based on selected tickers
+            filtered_stock_data = {ticker: stock_data[ticker] for ticker in selected_tickers if ticker in stock_data}
+
+            # Create a DataFrame
+            df = pd.DataFrame(list(filtered_stock_data.items()), columns=['Company', 'Percentage Change'])
+
+            # Sort DataFrame by percentage change
+            df = df.sort_values(by='Percentage Change', ascending=False)
+            data.append(df)
+
+
+        for i, graph in enumerate(graphs):
+            with graph:
+                st.markdown(f"### {selected_years[i]}")
+                st.bar_chart(data[i].set_index('Company'))
 conn.close()
