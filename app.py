@@ -303,8 +303,8 @@ if compare_option == "Quarters":
         combined_df.reset_index(inplace=True)
         combined_df.rename(columns={'index': 'Company'}, inplace=True)
         combined_df = combined_df.round(2)
-        st.write("### Combined Percentage Change Table")
         with st.container(border=True):
+            st.write("### Combined Percentage Change Table")
             st.dataframe(combined_df.sort_values("Company"), use_container_width=True, hide_index=True)
 elif compare_option == "Calendar Year":
 
