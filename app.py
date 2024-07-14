@@ -1,15 +1,21 @@
+import time
+
 import streamlit as st
 import yfinance as yf
 import pandas as pd
 import matplotlib.pyplot as plt
 import sqlite3
 from datetime import datetime, timedelta
+import google.generativeai as genai
+import os
+from tessa import Symbol
+
 st.set_page_config(layout="wide")
 
 
 soxx_stocks = ['AVGO', 'NVDA', 'AMD', 'AMAT', 'QCOM', 'LRCX', 'TSM', 'KLAC', 'INTC', 'MRVL', 'MU', 'MPWR', 'TXN', 'ASML', 'NXPI', 'ADI', 'MCHP', 'ON', 'TER', 'ENTG', 'SWKS', 'QRVO', 'STM', 'MKSI', 'ASX', 'LSCC', 'RMBS', 'UMC', 'ACLS', 'WOLF', '7203.T']
 
-conn = sqlite3.connect('soxx_stock_data.db')
+conn = sqlite3.connect('all_stock_data.db')
 c = conn.cursor()
 
 c.execute('''
@@ -32,29 +38,55 @@ c.execute('''
 if 'combined_quarterly' not in st.session_state:
     st.session_state['combined_quarterly'] = pd.DataFrame()
 
-def get_stock_data(tickers, start_date, end_date):
+def get_stock_data(tickers, start_date, end_date, source="yfinance"):
     data = {}
-    for ticker in tickers:
-        stock = yf.Ticker(ticker)
-        hist = stock.history(start=start_date, end=end_date)
-        if not hist.empty:
-            start_price = hist['Close'][0]
-            end_price = hist['Close'][-1]
-            percent_change = ((end_price - start_price) / start_price) * 100
-            data[ticker] = percent_change
-    return data
+
+    if source == "yfinance":
+        for ticker in tickers:
+            stock = yf.Ticker(ticker)
+            hist = stock.history(start=start_date, end=end_date)
+            if not hist.empty:
+                start_price = hist['Close'][0]
+                end_price = hist['Close'][-1]
+                percent_change = ((end_price - start_price) / start_price) * 100
+                data[ticker] = percent_change
+        return data
+
+    elif source == "tessa":
+        for ticker in tickers:
+            try:
+                stock = Symbol(ticker)
+                start_date_str = start_date
+                end_date_str = end_date
+
+                start_price = stock.price_point(start_date_str).price
+                end_price = stock.price_point(end_date_str).price
+
+                print(f"Ticker: {ticker}, Start Price: {start_price}, End Price: {end_price}")
+
+                if start_price and end_price:
+                    percent_change = ((end_price - start_price) / start_price) * 100
+                    data[ticker] = percent_change
+            except Exception as e:
+                print(f"Error fetching data for {ticker}: {e}")
+        return data
 
 def store_stock_data(data, start_date, end_date):
     for company, percent_change in data.items():
-        c.execute('''
-            INSERT INTO stocks (company, start_date, end_date, percent_change) VALUES (?, ?, ?, ?)
-        ''', (company, start_date, end_date, percent_change))
+        if percent_change != 0:  # Skip storing if the percent change is 0
+            c.execute('''
+                INSERT INTO stocks (company, start_date, end_date, percent_change) VALUES (?, ?, ?, ?)
+            ''', (company, start_date, end_date, percent_change))
     conn.commit()
 
-def fetch_stock_data(start_date, end_date):
-    c.execute('''
-        SELECT company, percent_change FROM stocks WHERE start_date = ? AND end_date = ?
-    ''', (start_date, end_date))
+def fetch_stock_data(tickers, start_date, end_date):
+    placeholders = ','.join(['?'] * len(tickers))
+    query = f'''
+        SELECT company, percent_change FROM stocks 
+        WHERE start_date = ? AND end_date = ? AND company IN ({placeholders})
+    '''
+    params = [start_date, end_date] + tickers
+    c.execute(query, params)
     rows = c.fetchall()
     return {row[0]: row[1] for row in rows}
 
@@ -119,13 +151,22 @@ def load_stock_lists():
     rows = c.fetchall()
     return {row[0]: row[1].split(",") for row in rows}
 
+# Function to query the LLM (e.g., Gemini)
+def query_llm(prompt):
+    api_key = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    print(response.text)
+    return response.text
+
 st.title("Quarterly Percentage Change in SOXX Stock Prices")
 st.write("This dashboard compares the percentage change in stock prices of SOXX component stocks over selected quarters.")
 quarters = ["Q1", "Q2", "Q3", "Q4"]
 years = [str(year) for year in range(2015, datetime.now().year + 1)]
 with st.sidebar:
     with st.container(border=True):
-        stock_entry_mode = st.radio("Select Stock Entry Mode", ("Select SOXX Stocks", "Create Custom Stock List"))
+        stock_entry_mode = st.radio("Select Stock Entry Mode", ("Select SOXX Stocks", "Create Custom Stock List", "Query LLM"))
     if stock_entry_mode == "Select SOXX Stocks":
         with st.container(border=True):
             st.header("Select Stocks")
@@ -143,6 +184,11 @@ with st.sidebar:
             st.header("Custom Stock Lists")
             stock_lists = load_stock_lists()
             with st.form(key="create_stock_list_form"):
+                # new_list_name = st.text_input("New List Name", value=st.session_state.get('selected_list_name', ""))
+                # current_list_stocks = stock_lists.get(st.session_state.get('selected_list_name', ""), "")
+                # current_tickers = ", ".join(current_list_stocks) if current_list_stocks else ""
+                # new_list_tickers = st.text_area("Tickers (comma-separated)", value=current_tickers)
+                # submit_button = st.form_submit_button("Create List", use_container_width=True)
                 new_list_name = st.text_input("New List Name")
                 new_list_tickers = st.text_area("Tickers (comma-separated)")
                 submit_button = st.form_submit_button("Create List", use_container_width=True)
@@ -151,18 +197,29 @@ with st.sidebar:
                     st.success(f"List '{new_list_name}' created successfully!")
                     st.rerun()
 
-            # Select an existing custom stock list
-            selected_list_name = st.selectbox("Select Stock List", options=[""] + list(stock_lists.keys()))
-            selected_tickers = stock_lists.get(selected_list_name, [])
-            # Delete a custom stock list
-            if selected_list_name:
-                if st.button("Delete Selected List", use_container_width=True):
-                    delete_stock_list(selected_list_name)
-                    st.success(f"List '{selected_list_name}' deleted successfully!")
-                    st.rerun()
-
+            with st.container(border=True):
+                # Select an existing custom stock list
+                selected_list_name = st.selectbox("Select Stock List", options= list(stock_lists.keys()))
+                st.session_state['selected_list_name'] = selected_list_name
+                selected_tickers = stock_lists.get(selected_list_name, [])
+                # Delete a custom stock list
+                if selected_list_name:
+                    if st.button("Delete Selected List", use_container_width=True):
+                        delete_stock_list(selected_list_name)
+                        st.success(f"List '{selected_list_name}' deleted successfully!")
+                        st.rerun()
+    elif stock_entry_mode == "Query LLM":
+        with st.container(border=True):
+            llm_prompt = "Please provide me with the tickers for the following companies separated by commas. Striclty follow this prompt and respond only with tickers separated by commas, only provide me with tikcers for US companies in this prompt: "
+            user_prompt = st.text_area("Enter a prompt for the LLM:")
+            response = query_llm(llm_prompt + user_prompt)
+            selected_tickers = []
+            if st.button("Get Tickers", use_container_width=True):
+                selected_tickers = response.split(", ")
     with st.container(border=True):
         compare_option = st.radio("Compare by:", ("Quarters", "Calendar Year"))
+
+
 
 
 if compare_option == "Quarters":
@@ -205,11 +262,14 @@ if compare_option == "Quarters":
         for i, (quarter, year) in enumerate(selected_quarters):
             start_date, end_date = get_date_range(year, quarter)
 
-            stock_data = fetch_stock_data(start_date, end_date)
+            stock_data = fetch_stock_data(selected_tickers, start_date,
+                                          end_date)
 
-            if not stock_data:
-                stock_data = get_stock_data(selected_tickers, start_date, end_date)
-                store_stock_data(stock_data, start_date, end_date)
+            missing_tickers = [ticker for ticker in selected_tickers if ticker not in stock_data]
+            if missing_tickers:
+                api_stock_data = get_stock_data(missing_tickers, start_date, end_date, source="yfinance")
+                store_stock_data(api_stock_data, start_date, end_date)
+                stock_data.update(api_stock_data)
 
             filtered_stock_data = {ticker: stock_data[ticker] for ticker in selected_tickers if ticker in stock_data}
 
