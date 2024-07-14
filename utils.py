@@ -135,7 +135,7 @@ def query_llm(prompt):
 def global_sidebar():
     with st.sidebar:
         with st.container(border=True):
-            st.image("static/stocktickr-logo.png", width =295)
+            st.image("static/stocktickr-logo.png")
             with st.expander("Menu", expanded=True):
                 st.page_link("pages/Quarterly.py", label="Quarterly", icon="📊")
                 st.page_link("pages/Yearly.py", label = "Yearly", icon="📅")
