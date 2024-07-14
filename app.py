@@ -338,23 +338,24 @@ elif compare_option == "Calendar Year":
             start_date = f"{year}-01-01"
             end_date = f"{year}-12-31"
 
-            # Check if data exists in database
-            stock_data = fetch_stock_data(start_date, end_date)
+            stock_data = fetch_stock_data(selected_tickers, start_date,
+                                          end_date)
 
-            # If no data in database, fetch from API and store in database
-            if not stock_data:
-                stock_data = get_stock_data(selected_tickers, start_date, end_date)
-                store_stock_data(stock_data, start_date, end_date)
+            missing_tickers = [ticker for ticker in selected_tickers if ticker not in stock_data]
+            if missing_tickers:
+                api_stock_data = get_stock_data(missing_tickers, start_date, end_date, source="yfinance")
+                store_stock_data(api_stock_data, start_date, end_date)
+                stock_data.update(api_stock_data)
 
-            # Filter the data based on selected tickers
             filtered_stock_data = {ticker: stock_data[ticker] for ticker in selected_tickers if ticker in stock_data}
 
-            # Create a DataFrame
             df = pd.DataFrame(list(filtered_stock_data.items()), columns=['Company', 'Percentage Change'])
 
-            # Sort DataFrame by percentage change
             df = df.sort_values(by='Percentage Change', ascending=False)
+
             data.append(df)
+
+
             for ticker in selected_tickers:
                 combined_data[ticker].append(filtered_stock_data.get(ticker, 0.0))
 
