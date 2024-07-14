@@ -5,6 +5,7 @@ import sqlite3
 from contextlib import closing
 from utils import global_sidebar
 import streamlit_antd_components as sac
+st.set_page_config(layout="wide")
 
 # Function to get a new database connection
 def get_db_connection():

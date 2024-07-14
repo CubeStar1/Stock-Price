@@ -3,6 +3,7 @@ import pandas as pd
 from utils import get_last_n_quarters, get_last_n_years, fetch_stock_data, get_stock_data, store_stock_data, get_date_range
 from utils import global_sidebar, percent_sidebar
 import matplotlib.pyplot as plt
+st.set_page_config(layout="wide")
 
 def quarterly_analysis():
     st.title("Quarterly Percentage Change in Stock Prices")

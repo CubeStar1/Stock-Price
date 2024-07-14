@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from utils import global_sidebar, percent_sidebar
 
+st.set_page_config(layout="wide")
+
+
 @st.cache_resource
 def download_nltk_resources():
     nltk.download('vader_lexicon')

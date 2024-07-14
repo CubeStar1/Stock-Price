@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from utils import get_last_n_years, fetch_stock_data, get_stock_data, store_stock_data
 from utils import global_sidebar, percent_sidebar
+st.set_page_config(layout="wide")
 
 def yearly_analysis():
     st.title("Yearly Percentage Change in Stock Prices")

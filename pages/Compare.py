@@ -4,6 +4,9 @@ import yfinance as yf
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from utils import global_sidebar, percent_sidebar
+
+st.set_page_config(layout="wide")
+
 def stock_comparison():
     st.title("Stock Comparison")
 
