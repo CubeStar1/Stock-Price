@@ -140,6 +140,8 @@ def global_sidebar():
                 st.page_link("pages/Quarterly.py", label="Quarterly", icon="📊")
                 st.page_link("pages/Yearly.py", label = "Yearly", icon="📅")
                 st.page_link("pages/Stock Price.py", label="Stock Price", icon="💹")
+                st.page_link("pages/Compare.py", label="Compare", icon="🔍")
+                st.page_link("pages/Sentiment Analysis.py", label="Sentiment Analysis", icon="📈")
 
 
 def percent_sidebar():

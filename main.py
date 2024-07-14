@@ -13,6 +13,9 @@ st.set_page_config(layout="wide")
 api_key = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=api_key)
 
+if "selected_tickers" not in st.session_state:
+    st.session_state.selected_tickers = ["AAPL", "GOOGL", "AMZN", "MSFT", "TSLA", "FB"]
+
 def init_db():
     # Database connection and initialization
     conn = sqlite3.connect('all_stock_data.db')
