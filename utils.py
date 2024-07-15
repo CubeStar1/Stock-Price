@@ -155,10 +155,14 @@ def percent_sidebar():
     with st.sidebar:
         with st.container(border=True):
             st.title("Stock Selection")
+
+            if 'stock_lists' not in st.session_state:
+                st.session_state.stock_lists = load_stock_lists()
             with st.container(border=True):
                 stock_entry_mode = st.radio("Select Stock Entry Mode",
-                                            ("Select SOXX Stocks", "Choose/Create Stock List", "Query LLM"),
+                                            ("Select SOXX Stocks", "Manage Stock Lists", "Query LLM"),
                                             key="stock_way")
+
             if stock_entry_mode == "Select SOXX Stocks":
                 soxx_stocks = ['AVGO', 'NVDA', 'AMD', 'AMAT', 'QCOM', 'LRCX', 'TSM', 'KLAC', 'INTC', 'MRVL', 'MU', 'MPWR',
                                'TXN', 'ASML', 'NXPI', 'ADI', 'MCHP', 'ON', 'TER', 'ENTG', 'SWKS', 'QRVO', 'STM', 'MKSI',
@@ -166,40 +170,70 @@ def percent_sidebar():
                                'LSCC', 'RMBS', 'UMC', 'ACLS', 'WOLF', '8035.T']
                 st.session_state.selected_tickers = st.multiselect("Select SOXX component stocks:", options=soxx_stocks,
                                                                    default=['AMAT', 'ASML', 'KLAC', '8035.T', 'LRCX'])
-            elif stock_entry_mode == "Choose/Create Stock List":
-                stock_lists = load_stock_lists()
-                st.session_state.stock_lists = stock_lists
-                selected_list = st.selectbox("Select a stock list:",
-                                             options=["Create New Stock List"] + list(st.session_state.stock_lists.keys()),
-                                             index=len(st.session_state.stock_lists))
-                if stock_lists and selected_list != "Create New Stock List":
-                    st.session_state.selected_tickers = stock_lists[selected_list]
 
-                if selected_list == "Create New Stock List" or not stock_lists:
-                    with st.form("Create New Stock List"):
+            elif stock_entry_mode == "Manage Stock Lists":
+                with st.container(border=True):
+                    st.subheader("Manage Stock Lists")
+
+                    list_action = st.radio("Choose an action:", ("Select Existing List", "Create New List"))
+
+                    if list_action == "Select Existing List":
+                        if st.session_state.stock_lists:
+                            selected_list = st.selectbox("Select a stock list:",
+                                                         options=list(st.session_state.stock_lists.keys()))
+                            st.session_state.selected_tickers = st.session_state.stock_lists[selected_list]
+
+                            ticker_string = ", ".join(st.session_state.selected_tickers)
+                            new_ticker_string = st.text_area("Edit tickers (comma-separated):", value=ticker_string)
+
+                            if st.button("Update List", use_container_width=True):
+                                new_tickers = [ticker.strip() for ticker in new_ticker_string.split(",")]
+                                save_stock_list(selected_list, new_tickers)
+                                st.session_state.stock_lists[selected_list] = new_tickers
+                                st.session_state.selected_tickers = new_tickers
+                                st.success(f"Updated {selected_list}")
+
+                            if st.button("Delete List", use_container_width=True):
+                                delete_stock_list(selected_list)
+                                del st.session_state.stock_lists[selected_list]
+                                st.success(f"Deleted {selected_list}")
+                                st.rerun()
+                        else:
+                            st.write("No existing lists. Create a new one!")
+
+                    elif list_action == "Create New List":
                         new_list_name = st.text_input("Enter a name for the new stock list:")
-                        ticker_string = st.text_area("Enter the tickers for the new stock list (comma-separated)", value="")
-                        selected_tickers = ticker_string.split(", ")
-                        st.session_state.selected_tickers = selected_tickers
-                        if new_list_name:
-                            save_stock_list(new_list_name, st.session_state.selected_tickers)
-                            st.session_state.stock_lists[new_list_name] = selected_tickers
-                        st.form_submit_button("Create Stock List", use_container_width=True)
-                if st.button("Delete Stock List", use_container_width=True):
-                    delete_stock_list(selected_list)
-                    st.session_state.stock_lists.pop(selected_list)
-            elif stock_entry_mode == "Query LLM":
-                try:
-                    with st.form("Query LLM"):
-                        llm_prompt = "Please provide me with the tickers for the following companies separated by commas. Striclty follow this prompt and respond only with tickers separated by commas, only provide me with tikcers for US companies in this prompt: "
-                        user_prompt = st.text_area("Enter a prompt for the LLM:")
-                        response = query_llm(llm_prompt + user_prompt)
-                        st.markdown(f"{response}")
-                        selected_tickers = []
-                        if st.form_submit_button("Get Tickers", use_container_width=True):
-                            selected_tickers = response.split(", ")
-                            st.session_state.selected_tickers = selected_tickers
+                        new_ticker_string = st.text_area("Enter the tickers for the new stock list (comma-separated)")
 
-                except Exception as e:
-                    st.error(f"Error fetching data: {e}")
+                        if st.button("Create List"):
+                            if new_list_name and new_ticker_string:
+                                new_tickers = [ticker.strip() for ticker in new_ticker_string.split(",")]
+                                save_stock_list(new_list_name, new_tickers)
+                                st.session_state.stock_lists[new_list_name] = new_tickers
+                                st.session_state.selected_tickers = new_tickers
+                                st.success(f"Created new list: {new_list_name}")
+                            else:
+                                st.error("Please enter both a name and tickers for the new list.")
+
+            elif stock_entry_mode == "Query LLM":
+                with st.container(border=True):
+                    st.subheader("Query LLM for Tickers")
+                    with st.form("Query LLM"):
+                        llm_prompt = "Please provide me with the tickers for the following companies separated by commas. Strictly follow this prompt and respond only with tickers separated by commas, only provide me with tickers for US companies in this prompt: "
+                        user_prompt = st.text_area("Enter a prompt for the LLM:")
+                        submit_button = st.form_submit_button("Get Tickers")
+
+                        if submit_button:
+                            try:
+                                response = query_llm(llm_prompt + user_prompt)
+                                st.write(response)
+                                selected_tickers = [ticker.strip() for ticker in response.split(",")]
+                                st.session_state.selected_tickers = selected_tickers
+                                st.success("Tickers retrieved successfully!")
+                            except Exception as e:
+                                st.error(f"Error fetching data: {e}")
+
+            with st.container(border=True):
+                st.subheader("Selected Tickers")
+                st.write(", ".join(st.session_state.selected_tickers))
 
