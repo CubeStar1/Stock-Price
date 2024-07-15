@@ -136,7 +136,7 @@ def portfolio_management():
                 with col3:
                     purchase_date = st.date_input("Purchase Date")
                 with col4:
-                    purchase_price = st.number_input("Purchase Price", min_value=0.01, step=0.01)
+                    purchase_price = st.number_input("Purchase Price", min_value=0.01, step=0.01, value=get_stock_price(ticker, purchase_date))
 
                 if st.button("Add Stock to Portfolio"):
                     add_stock_to_portfolio(selected_portfolio, ticker, shares, purchase_date.isoformat(), get_stock_price(ticker, purchase_date))
