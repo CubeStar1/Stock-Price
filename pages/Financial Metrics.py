@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
-from utils import global_sidebar, percent_sidebar
+from utils import global_sidebar, stock_selector
 
 def calculate_financial_metrics(ticker, years=5):
     try:
@@ -97,13 +97,15 @@ def financial_metrics_page():
                 xaxis_title='Stocks',
                 yaxis_title='Ratio',
                 yaxis_tickformat='.2%',
-                barmode='group'
+                barmode='group',
+                dragmode=False
             )
             st.plotly_chart(fig)
 
             metrics_to_plot = ['ROIC', 'ROA', 'ROE', 'ROCE']
             for metric in metrics_to_plot:
                 fig = create_metric_graph(combined_metrics, metric)
+                fig.update_layout(dragmode=False)
                 st.plotly_chart(fig)
 
             st.subheader("Metrics Explanation")
@@ -119,5 +121,5 @@ def financial_metrics_page():
         st.info("Please enter one or more stock tickers to calculate financial metrics.")
 
 global_sidebar()
-percent_sidebar()
+stock_selector()
 financial_metrics_page()

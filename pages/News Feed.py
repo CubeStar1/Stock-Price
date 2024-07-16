@@ -4,7 +4,7 @@ import pandas as pd
 from newsapi import NewsApiClient
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
-from utils import global_sidebar, percent_sidebar
+from utils import global_sidebar, stock_selector
 
 st.set_page_config(layout="wide")
 
@@ -112,7 +112,7 @@ def news_feed_integration():
         st.info("Please select a stock or ETF from the dropdown menu.")
 
 global_sidebar()
-percent_sidebar()
+stock_selector()
 
 
 news_feed_integration()

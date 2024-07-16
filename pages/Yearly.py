@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from utils import get_last_n_years, fetch_stock_data, get_stock_data, store_stock_data
-from utils import global_sidebar, percent_sidebar
+from utils import global_sidebar, stock_selector
 st.set_page_config(layout="wide")
 
 def yearly_analysis():
@@ -75,5 +75,5 @@ def yearly_analysis():
             st.dataframe(combined_df.sort_values("Company"), use_container_width=True, hide_index=True)
 
 global_sidebar()
-percent_sidebar()
+stock_selector()
 yearly_analysis()

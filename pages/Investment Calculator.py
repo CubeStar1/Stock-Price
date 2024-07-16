@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import numpy as np
 import yfinance as yf
 from datetime import datetime, timedelta
-from utils import global_sidebar, percent_sidebar
+from utils import global_sidebar, stock_selector
 
 st.set_page_config(layout="wide")
 
@@ -122,7 +122,7 @@ def investment_calculator():
 
 
 global_sidebar()
-percent_sidebar()
+stock_selector()
 
 
 investment_calculator()

@@ -8,7 +8,7 @@ import google.generativeai as genai
 import os
 from tessa import Symbol
 
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_icon="📈", page_title="Stock Tikr")
 
 api_key = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=api_key)

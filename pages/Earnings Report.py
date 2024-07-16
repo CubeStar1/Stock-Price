@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 import sqlite3
 from datetime import datetime
-from utils import global_sidebar, percent_sidebar
+from utils import global_sidebar, stock_selector
 import plotly.graph_objects as go
 
 

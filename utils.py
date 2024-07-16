@@ -145,13 +145,13 @@ def global_sidebar():
                 st.page_link("pages/News Feed.py", label="News Feed", icon="📰")
                 st.page_link("pages/Earnings Report.py", label="Earnings Report", icon="💰")
                 st.page_link("pages/Investment Calculator.py", label="Investment Calculator", icon="🧮")
-                # st.page_link("pages/Stock Prediction.py", label="Stock Prediction", icon="🔮")
+                st.page_link("pages/Stock Prediction.py", label="Stock Prediction", icon="🔮")
                 st.page_link("pages/Portfolio.py", label="Portfolio", icon="💼")
                 # st.page_link("pages/Alerts.py", label="Alerts", icon="🚨")
                 st.page_link("pages/Financial Metrics.py", label="Financial Metrics", icon="📈")
 
 
-def percent_sidebar():
+def stock_selector():
     with st.sidebar:
         with st.container(border=True):
             st.title("Stock Selection")

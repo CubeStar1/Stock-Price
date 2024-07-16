@@ -162,7 +162,8 @@ else:
                     title="Stock Price over time",
                     xaxis_title="Date",
                     yaxis_title="Stock Price",
-                    hovermode="x unified"
+                    hovermode="x unified",
+                    dragmode= False,
                 )
 
                 st.plotly_chart(fig, use_container_width=True)

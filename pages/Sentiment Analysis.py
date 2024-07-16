@@ -7,7 +7,7 @@ from nltk.sentiment import SentimentIntensityAnalyzer
 from newsapi import NewsApiClient
 import matplotlib.pyplot as plt
 import seaborn as sns
-from utils import global_sidebar, percent_sidebar
+from utils import global_sidebar, stock_selector
 
 st.set_page_config(layout="wide")
 
@@ -100,5 +100,5 @@ def stock_sentiment_analysis():
             st.warning("No recent news articles found for this stock.")
 
 global_sidebar()
-percent_sidebar()
+stock_selector()
 stock_sentiment_analysis()

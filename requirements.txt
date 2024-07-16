@@ -8,3 +8,6 @@ streamlit-antd-components
 plotly
 newsapi-python
 nltk
+tensorflow
+keras
+scikit-learn

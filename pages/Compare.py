@@ -3,7 +3,7 @@ import pandas as pd
 import yfinance as yf
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from utils import global_sidebar, percent_sidebar
+from utils import global_sidebar, stock_selector
 
 st.set_page_config(layout="wide")
 
@@ -58,5 +58,5 @@ def stock_comparison():
 
 
 global_sidebar()
-percent_sidebar()
+stock_selector()
 stock_comparison()

@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from utils import get_last_n_quarters, get_last_n_years, fetch_stock_data, get_stock_data, store_stock_data, get_date_range
-from utils import global_sidebar, percent_sidebar
+from utils import global_sidebar, stock_selector
 import matplotlib.pyplot as plt
 st.set_page_config(layout="wide")
 
@@ -94,5 +94,5 @@ def quarterly_analysis():
 # This includes fetching data, creating charts, and displaying results
 
 global_sidebar()
-percent_sidebar()
+stock_selector()
 quarterly_analysis()

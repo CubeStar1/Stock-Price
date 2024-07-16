@@ -4,10 +4,10 @@ import yfinance as yf
 from tessa import Symbol
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
-from utils import global_sidebar, percent_sidebar, get_stock_data
+from utils import global_sidebar, stock_selector, get_stock_data
 import sqlite3
 from functools import lru_cache
-
+st.set_page_config(layout="wide")
 
 def init_db():
     conn = sqlite3.connect('portfolio.db')
@@ -274,5 +274,5 @@ def portfolio_management():
 
 
 global_sidebar()
-percent_sidebar()
+stock_selector()
 portfolio_management()
