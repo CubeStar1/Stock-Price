@@ -4,6 +4,7 @@ import pandas as pd
 import sqlite3
 from contextlib import closing
 from utils import global_sidebar
+import plotly.graph_objects as go
 import streamlit_antd_components as sac
 st.set_page_config(layout="wide")
 
@@ -147,7 +148,24 @@ else:
             history = stock.history(period=period)
             chart_data = pd.DataFrame(history["Close"])
             with st.container(border=True):
-                st.line_chart(chart_data)
+                # Create line chart
+                fig = go.Figure()
+
+                fig.add_trace(go.Scatter(
+                    x=chart_data.index,
+                    y=chart_data["Close"],
+                    mode='lines',
+                    name=ticker
+                ))
+
+                fig.update_layout(
+                    title="Stock Price over time",
+                    xaxis_title="Date",
+                    yaxis_title="Stock Price",
+                    hovermode="x unified"
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
 
             col1, col2, col3 = st.columns(3)
 
