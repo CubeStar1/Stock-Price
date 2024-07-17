@@ -1,12 +1,11 @@
-# stock_sentiment.py
-
 import streamlit as st
 import pandas as pd
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
-from newsapi import NewsApiClient
+import yfinance as yf
 import matplotlib.pyplot as plt
 import seaborn as sns
+from datetime import datetime
 from utils import global_sidebar, stock_selector
 
 st.set_page_config(layout="wide")
@@ -16,24 +15,35 @@ st.set_page_config(layout="wide")
 def download_nltk_resources():
     nltk.download('vader_lexicon')
 
+
 download_nltk_resources()
 
 # Initialize sentiment analyzer
 sia = SentimentIntensityAnalyzer()
 
-# Initialize NewsAPI client (you'll need to sign up for a free API key at newsapi.org)
-newsapi = NewsApiClient(api_key=st.secrets["NEWSAPI_API_KEY"])
-
 
 def get_news(ticker):
-    """Fetch news articles for a given stock ticker."""
-    articles = newsapi.get_everything(q=ticker, language='en', sort_by='publishedAt', page_size=10)
-    return articles['articles']
+    """Fetch news articles for a given stock ticker using yfinance."""
+    stock = yf.Ticker(ticker)
+    return stock.news
 
 
 def analyze_sentiment(text):
     """Analyze the sentiment of a given text."""
     return sia.polarity_scores(text)['compound']
+
+
+def get_thumbnail_url(thumbnail_data):
+    """Extract the thumbnail URL from the thumbnail data."""
+    if thumbnail_data and 'resolutions' in thumbnail_data:
+        # Try to get the original resolution first
+        original = next((item for item in thumbnail_data['resolutions'] if item['tag'] == 'original'), None)
+        if original:
+            return original['url']
+        # If original is not available, return the first available resolution
+        elif thumbnail_data['resolutions']:
+            return thumbnail_data['resolutions'][0]['url']
+    return None  # Return None if no thumbnail is available
 
 
 def stock_sentiment_analysis():
@@ -55,12 +65,15 @@ def stock_sentiment_analysis():
             # Analyze sentiment
             sentiments = []
             for article in news_articles:
-                sentiment = analyze_sentiment(article['title'] + ' ' + article['description'])
+                sentiment = analyze_sentiment(article['title'])
                 sentiments.append({
                     'title': article['title'],
-                    'description': article['description'],
-                    'url': article['url'],
-                    'sentiment': sentiment
+                    'publisher': article.get('publisher', 'Unknown'),
+                    'link': article['link'],
+                    'publish_time': datetime.fromtimestamp(article['providerPublishTime']).strftime(
+                        '%Y-%m-%d %H:%M:%S'),
+                    'sentiment': sentiment,
+                    'thumbnail': get_thumbnail_url(article.get('thumbnail'))
                 })
 
             # Create DataFrame
@@ -82,19 +95,25 @@ def stock_sentiment_analysis():
             st.subheader("Recent News Articles")
             for idx, row in df.iterrows():
                 with st.container(border=True):
-                    st.write(f"**[{row['title']}]({row['url']})**")
-                    st.write(f"Sentiment Score: {row['sentiment']:.2f}")
-                    if row['sentiment'] > 0.05:
-                        st.success("Positive sentiment")
-                    elif row['sentiment'] < -0.05:
-                        st.error("Negative sentiment")
-                    else:
-                        st.info("Neutral sentiment")
+                    col1, col2 = st.columns([1, 3])
 
-                    # Article preview
-                    with st.expander("Article Preview"):
-                        st.write(row['description'])
-                        st.write(f"[Read full article]({row['url']})")
+                    with col1:
+                        if row['thumbnail']:
+                            with st.container(border=True):
+                                st.image(row['thumbnail'], use_column_width=True)
+                        else:
+                            st.write("No thumbnail available")
+
+                    with col2:
+                        st.write(f"**[{row['title']}]({row['link']})**")
+                        st.write(f"Published by: {row['publisher']} on {row['publish_time']}")
+                        st.write(f"Sentiment Score: {row['sentiment']:.2f}")
+                        if row['sentiment'] > 0.05:
+                            st.success("Positive sentiment")
+                        elif row['sentiment'] < -0.05:
+                            st.error("Negative sentiment")
+                        else:
+                            st.info("Neutral sentiment")
 
         else:
             st.warning("No recent news articles found for this stock.")

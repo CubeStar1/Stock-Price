@@ -81,8 +81,8 @@ def quarterly_analysis():
                 st.bar_chart(data[i].set_index('Company'))
         with st.expander("Show Combined Plot", expanded=True):
             st.pyplot(fig)
-        print(selected_quarters)
-        print(combined_data)
+        # print(selected_quarters)
+        # print(combined_data)
         combined_df = pd.DataFrame.from_dict(combined_data, orient='index',
                                              columns=[f"{quarter} {year}" for quarter, year in selected_quarters])
         combined_df.reset_index(inplace=True)
