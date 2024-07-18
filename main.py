@@ -16,7 +16,7 @@ st.set_page_config(layout="wide", page_icon="📈", page_title="Stock Tikr")
 # Initialize cookie controller
 cookie_name = st.secrets['COOKIE_NAME']
 controller = CookieController(key='cookies')
-time.sleep(0.1)
+time.sleep(1)
 
 # Initialize Supabase client
 @st.cache_resource
@@ -64,7 +64,7 @@ def sign_in(email, password):
         if response.user:
             st.session_state.user = response.user
             controller.set(f'{cookie_name}_logged_in', 'logged_in', max_age=15*24*60*60)
-            time.sleep(0.1)
+            time.sleep(1)
         return response
     except Exception as e:
         st.error(f"Sign in failed: {str(e)}")
