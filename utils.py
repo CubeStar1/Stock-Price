@@ -166,7 +166,7 @@ def global_sidebar():
                 st.markdown("## News and Sentiment")
                 st.page_link("pages/Sentiment Analysis.py", label="Sentiment Analysis", icon="📈")
                 st.page_link("pages/News Feed.py", label="News Feed", icon="📰")
-                st.page_link("pages/Earnings Call.py", label="Earnings Call", icon="📞")
+                # st.page_link("pages/Earnings Call.py", label="Earnings Call", icon="📞")
 
                 # Portfolio Management
                 st.markdown("## Portfolio Management")
