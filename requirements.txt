@@ -11,3 +11,6 @@ nltk
 tensorflow
 keras
 scikit-learn
+supabase
+st-login-form
+streamlit-cookies-controller

@@ -6,10 +6,15 @@ import sqlite3
 from datetime import datetime, timedelta
 import google.generativeai as genai
 import os
+import time
+from supabase import create_client, Client
 from tessa import Symbol
+# from streamlit_cookies_controller import CookieController
+# cookie_name = st.secrets['COOKIE_NAME']
+# controller = CookieController(key='cookies')
 
 
-# Common functions
+
 def get_stock_data(tickers, start_date, end_date, source="yfinance"):
     data = {}
     if source == "yfinance":
@@ -132,23 +137,58 @@ def query_llm(prompt):
     return response.text
 
 
+
 def global_sidebar():
-    with st.sidebar:
-        with st.container(border=True):
-            st.image("static/stocktickr-logo.png")
+    # if not st.session_state.get("authenticated"):
+    if not st.session_state.get("user"):
+        st.switch_page("main.py")
+    else:
+        with st.sidebar:
+            with st.container(border=True):
+                st.image("static/stocktickr-logo.png")
+
             with st.expander("Menu", expanded=True):
+                # Financial Reports
+                st.markdown("## Financial Reports")
                 st.page_link("pages/Quarterly.py", label="Quarterly", icon="📊")
-                st.page_link("pages/Yearly.py", label = "Yearly", icon="📅")
+                st.page_link("pages/Yearly.py", label="Yearly", icon="📅")
+                st.page_link("pages/Earnings Report.py", label="Earnings Report", icon="💰")
+                st.page_link("pages/Financial Metrics.py", label="Financial Metrics", icon="📈")
+
+
+                # Stock Analysis
+                st.markdown("## Stock Analysis")
                 st.page_link("pages/Stock Price.py", label="Stock Price", icon="💹")
-                st.page_link("pages/Compare.py", label="Compare", icon="🔍")
+                st.page_link("pages/Compare.py", label="Compare Stocks", icon="🔍")
+                st.page_link("pages/Stock Prediction.py", label="Stock Prediction", icon="🔮")
+
+                # News and Sentiment
+                st.markdown("## News and Sentiment")
                 st.page_link("pages/Sentiment Analysis.py", label="Sentiment Analysis", icon="📈")
                 st.page_link("pages/News Feed.py", label="News Feed", icon="📰")
-                st.page_link("pages/Earnings Report.py", label="Earnings Report", icon="💰")
-                st.page_link("pages/Investment Calculator.py", label="Investment Calculator", icon="🧮")
-                st.page_link("pages/Stock Prediction.py", label="Stock Prediction", icon="🔮")
+                st.page_link("pages/Earnings Call.py", label="Earnings Call", icon="📞")
+
+                # Portfolio Management
+                st.markdown("## Portfolio Management")
                 st.page_link("pages/Portfolio.py", label="Portfolio", icon="💼")
+                st.page_link("pages/Investment Calculator.py", label="Investment Calculator", icon="🧮")
+
+                if st.button("Logout", use_container_width=True):
+                    # st.session_state.login_ok = False
+                    # st.session_state.username = None
+                    # st.session_state.authenticated = False
+                    # controller.remove(f'{cookie_name}_username')
+                    # controller.remove(f'{cookie_name}_auth_token')
+                    # time.sleep(1)
+                    # st.rerun()
+                    supabase_client = st.session_state.supabase_client
+                    supabase_client.auth.sign_out()
+                    st.session_state.user = None
+                    st.experimental_rerun()
+
+                # Alerts
+                # st.markdown("### Alerts")
                 # st.page_link("pages/Alerts.py", label="Alerts", icon="🚨")
-                st.page_link("pages/Financial Metrics.py", label="Financial Metrics", icon="📈")
 
 
 def stock_selector():
