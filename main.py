@@ -16,7 +16,7 @@ st.set_page_config(layout="wide", page_icon="📈", page_title="Stock Tikr")
 # Initialize cookie controller
 cookie_name = st.secrets['COOKIE_NAME']
 controller = CookieController(key='cookies')
-time.sleep(1)
+time.sleep(0.1)
 
 # Initialize Supabase client
 @st.cache_resource
@@ -64,7 +64,7 @@ def sign_in(email, password):
         if response.user:
             st.session_state.user = response.user
             controller.set(f'{cookie_name}_logged_in', 'logged_in', max_age=15*24*60*60)
-            time.sleep(1)
+            time.sleep(0.1)
         return response
     except Exception as e:
         st.error(f"Sign in failed: {str(e)}")
@@ -77,23 +77,27 @@ def sign_out():
     try:
         controller.remove(f'{cookie_name}_logged_in')
     except KeyError:
-        # If the cookie doesn't exist, we don't need to do anything
+        print('Error removing cookie')
         pass
 
 # Authentication check
 def check_auth():
-    if 'user' not in st.session_state:
-        cookie_status = controller.get(f'{cookie_name}_logged_in')
-        if cookie_status == 'logged_in':
-            session = supabase.auth.get_session()
-            if session and session.user:
-                st.session_state.user = session.user
+    try:
+        if 'user' not in st.session_state:
+            cookie_status = controller.get(f'{cookie_name}_logged_in')
+            if cookie_status == 'logged_in':
+                session = supabase.auth.get_session()
+                if session and session.user:
+                    st.session_state.user = session.user
+                else:
+                    sign_out()  # Clear the cookie if session is invalid
             else:
-                sign_out()  # Clear the cookie if session is invalid
-        else:
-            # Don't call sign_out() here, just ensure user is not in session state
-            if 'user' in st.session_state:
-                del st.session_state.user
+                # Don't call sign_out() here, just ensure user is not in session state
+                if 'user' in st.session_state:
+                    del st.session_state.user
+    except Exception as e:
+        st.error(f"Authentication check failed: {str(e)}")
+        sign_out()
 
 # Run auth check at the start
 check_auth()
@@ -116,7 +120,7 @@ if 'user' not in st.session_state:
                 response = sign_in(email, password)
                 if response and response.user:
                     st.success("Logged in successfully!")
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error("Login failed. Please check your credentials.")
 
