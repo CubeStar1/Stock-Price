@@ -9,9 +9,9 @@ import os
 import time
 from supabase import create_client, Client
 from tessa import Symbol
-# from streamlit_cookies_controller import CookieController
-# cookie_name = st.secrets['COOKIE_NAME']
-# controller = CookieController(key='cookies')
+from streamlit_cookies_controller import CookieController
+cookie_name = st.secrets['COOKIE_NAME']
+controller = CookieController(key='cookies')
 
 
 
@@ -183,8 +183,10 @@ def global_sidebar():
                     # st.rerun()
                     supabase_client = st.session_state.supabase_client
                     supabase_client.auth.sign_out()
+                    controller.remove(f'{cookie_name}_logged_in')
+                    time.sleep(1)
                     st.session_state.user = None
-                    st.experimental_rerun()
+                    st.rerun()
 
                 # Alerts
                 # st.markdown("### Alerts")

@@ -6,12 +6,20 @@ import sqlite3
 from datetime import datetime, timedelta
 import google.generativeai as genai
 from supabase import create_client, Client
-# from streamlit_cookies_controller import CookieController
+from streamlit_cookies_controller import CookieController
 import time
 import os
 from tessa import Symbol
 
+# Initialize cookie controller
+cookie_name = st.secrets['COOKIE_NAME']
+controller = CookieController(key='cookies')
 
+
+if 'logged_in' not in st.session_state and 'user' not in st.session_state:
+    st.session_state.logged_in = False
+    controller.set(f'{cookie_name}_logged_in', 'false', max_age=15*24*60*60)
+    time.sleep(1)
 
 # Initialize Supabase client
 @st.cache_resource
@@ -46,12 +54,6 @@ supabase = init_supabase()
 if 'supabase_client' not in st.session_state:
     st.session_state.supabase_client = supabase
 
-# Initialize cookie controller
-# cookie_name = st.secrets['COOKIE_NAME']
-# controller = CookieController(key='cookies')
-
-
-
 def sign_up(email, password):
     try:
         response = supabase.auth.sign_up({"email": email, "password": password})
@@ -61,22 +63,42 @@ def sign_up(email, password):
         return None
 
 def sign_in(email, password):
-    return supabase.auth.sign_in_with_password({"email": email, "password": password})
-
-
+    try:
+        response = supabase.auth.sign_in_with_password({"email": email, "password": password})
+        if response.user:
+            controller.set(f'{cookie_name}_logged_in', 'true', max_age=15*24*60*60)  # 30 days
+            time.sleep(1)
+            st.session_state.user = response.user
+        return response
+    except Exception as e:
+        st.error(f"Sign in failed: {str(e)}")
+        return None
 def sign_out():
-    return supabase.auth.sign_out()
+    supabase.auth.sign_out()
+    controller.remove(f'{cookie_name}_logged_in')
+    time.sleep(1)
+    st.session_state.user = None
 
 
+
+
+# Check if user is logged in
 if 'user' not in st.session_state:
-    # Check for existing session
+    # logged_in = controller.get(f'{cookie_name}_logged_in') == 'true'
+    # st.session_state.logged_in = logged_in
+    # if logged_in:
+    print("inside user not in")
     session = supabase.auth.get_session()
-    if session:
+    if session and session.user:
         st.session_state.user = session.user
+        controller.set(f'{cookie_name}_logged_in', 'true', max_age=15 * 24 * 60 * 60)
     else:
-        st.session_state.user = None
+        sign_out()  # Clear the cookie if session is invalid
+    # else:
+    #     st.session_state.user = None
 
-if st.session_state.user is None:
+logged_in = controller.get(f'{cookie_name}_logged_in')
+if not logged_in:
     st.title("Welcome to Stock Tikr")
     tab1, tab2 = st.tabs(["Login", "Sign Up"])
 
