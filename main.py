@@ -14,11 +14,12 @@ from tessa import Symbol
 # Initialize cookie controller
 cookie_name = st.secrets['COOKIE_NAME']
 controller = CookieController(key='cookies')
-
+# controller.set(f'{cookie_name}_logged_in', 'false', max_age=15*24*60*60)  # 30 days
+# time.sleep(1)
 
 if 'logged_in' not in st.session_state and 'user' not in st.session_state:
     st.session_state.logged_in = False
-    controller.set(f'{cookie_name}_logged_in', 'false', max_age=15*24*60*60)
+    controller.set(f'{cookie_name}_logged_in', 'logged_out', max_age=15*24*60*60)
     time.sleep(1)
 
 # Initialize Supabase client
@@ -57,6 +58,10 @@ if 'supabase_client' not in st.session_state:
 def sign_up(email, password):
     try:
         response = supabase.auth.sign_up({"email": email, "password": password})
+        if response.user:
+            controller.set(f'{cookie_name}_logged_in', 'logged_in', max_age=15*24*60*60)  # 30 days
+            time.sleep(1)
+            st.session_state.user = response.user
         return response
     except Exception as e:
         st.error(f"Sign up failed: {str(e)}")
@@ -66,7 +71,7 @@ def sign_in(email, password):
     try:
         response = supabase.auth.sign_in_with_password({"email": email, "password": password})
         if response.user:
-            controller.set(f'{cookie_name}_logged_in', 'true', max_age=15*24*60*60)  # 30 days
+            controller.set(f'{cookie_name}_logged_in', 'logged_in', max_age=15*24*60*60)  # 30 days
             time.sleep(1)
             st.session_state.user = response.user
         return response
@@ -79,26 +84,24 @@ def sign_out():
     time.sleep(1)
     st.session_state.user = None
 
-
-
-
 # Check if user is logged in
 if 'user' not in st.session_state:
     # logged_in = controller.get(f'{cookie_name}_logged_in') == 'true'
     # st.session_state.logged_in = logged_in
     # if logged_in:
+    controller.set(f'{cookie_name}_logged_in', 'logged_in', max_age=15 * 24 * 60 * 60)
     print("inside user not in")
     session = supabase.auth.get_session()
     if session and session.user:
+        print(session)
         st.session_state.user = session.user
-        controller.set(f'{cookie_name}_logged_in', 'true', max_age=15 * 24 * 60 * 60)
     else:
         sign_out()  # Clear the cookie if session is invalid
     # else:
     #     st.session_state.user = None
 
 logged_in = controller.get(f'{cookie_name}_logged_in')
-if not logged_in:
+if logged_in != 'logged_in':
     st.title("Welcome to Stock Tikr")
     tab1, tab2 = st.tabs(["Login", "Sign Up"])
 
@@ -138,9 +141,9 @@ else:
 
     init_db()
 
-    if st.sidebar.button("Logout"):
-        sign_out()
-        st.session_state.user = None
-        st.experimental_rerun()
+    # if st.sidebar.button("Logout"):
+    #     sign_out()
+    #     st.session_state.user = None
+    #     st.experimental_rerun()
 
     st.switch_page("pages/Quarterly.py")
