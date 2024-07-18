@@ -12,8 +12,18 @@ from tessa import Symbol
 from streamlit_cookies_controller import CookieController
 cookie_name = st.secrets['COOKIE_NAME']
 controller = CookieController(key='cookies')
+supabase_client = st.session_state.supabase_client
 
 
+def sign_out():
+    if 'user' in st.session_state:
+        del st.session_state.user
+    st.session_state.supabase_client.auth.sign_out()
+    try:
+        controller.remove(f'{cookie_name}_logged_in')
+    except KeyError:
+        # If the cookie doesn't exist, we don't need to do anything
+        pass
 
 def get_stock_data(tickers, start_date, end_date, source="yfinance"):
     data = {}
@@ -181,11 +191,13 @@ def global_sidebar():
                     # controller.remove(f'{cookie_name}_auth_token')
                     # time.sleep(1)
                     # st.rerun()
-                    supabase_client = st.session_state.supabase_client
-                    supabase_client.auth.sign_out()
-                    controller.remove(f'{cookie_name}_logged_in')
-                    time.sleep(1)
-                    st.session_state.user = None
+                    # supabase_client = st.session_state.supabase_client
+                    # supabase_client.auth.sign_out()
+                    # controller.remove(f'{cookie_name}_logged_in')
+                    # time.sleep(1)
+                    # st.session_state.user = None
+                    # st.rerun()
+                    sign_out()
                     st.rerun()
 
                 # Alerts

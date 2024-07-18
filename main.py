@@ -11,16 +11,12 @@ import time
 import os
 from tessa import Symbol
 
+st.set_page_config(layout="wide", page_icon="📈", page_title="Stock Tikr")
+
 # Initialize cookie controller
 cookie_name = st.secrets['COOKIE_NAME']
 controller = CookieController(key='cookies')
-# controller.set(f'{cookie_name}_logged_in', 'false', max_age=15*24*60*60)  # 30 days
-# time.sleep(1)
-
-if 'logged_in' not in st.session_state and 'user' not in st.session_state:
-    st.session_state.logged_in = False
-    controller.set(f'{cookie_name}_logged_in', 'logged_out', max_age=15*24*60*60)
-    time.sleep(1)
+time.sleep(1)
 
 # Initialize Supabase client
 @st.cache_resource
@@ -28,6 +24,10 @@ def init_supabase():
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
+
+supabase = init_supabase()
+if 'supabase_client' not in st.session_state:
+    st.session_state.supabase_client = supabase
 
 @st.cache_resource
 def init_db():
@@ -50,18 +50,9 @@ def init_db():
     conn.commit()
     conn.close()
 
-
-supabase = init_supabase()
-if 'supabase_client' not in st.session_state:
-    st.session_state.supabase_client = supabase
-
 def sign_up(email, password):
     try:
         response = supabase.auth.sign_up({"email": email, "password": password})
-        if response.user:
-            controller.set(f'{cookie_name}_logged_in', 'logged_in', max_age=15*24*60*60)  # 30 days
-            time.sleep(1)
-            st.session_state.user = response.user
         return response
     except Exception as e:
         st.error(f"Sign up failed: {str(e)}")
@@ -71,37 +62,49 @@ def sign_in(email, password):
     try:
         response = supabase.auth.sign_in_with_password({"email": email, "password": password})
         if response.user:
-            controller.set(f'{cookie_name}_logged_in', 'logged_in', max_age=15*24*60*60)  # 30 days
-            time.sleep(1)
             st.session_state.user = response.user
+            controller.set(f'{cookie_name}_logged_in', 'logged_in', max_age=15*24*60*60)
+            time.sleep(1)
         return response
     except Exception as e:
         st.error(f"Sign in failed: {str(e)}")
         return None
+
 def sign_out():
+    if 'user' in st.session_state:
+        del st.session_state.user
     supabase.auth.sign_out()
-    controller.remove(f'{cookie_name}_logged_in')
-    time.sleep(1)
-    st.session_state.user = None
+    try:
+        controller.remove(f'{cookie_name}_logged_in')
+    except KeyError:
+        # If the cookie doesn't exist, we don't need to do anything
+        pass
 
-# Check if user is logged in
+# Authentication check
+def check_auth():
+    if 'user' not in st.session_state:
+        cookie_status = controller.get(f'{cookie_name}_logged_in')
+        if cookie_status == 'logged_in':
+            session = supabase.auth.get_session()
+            if session and session.user:
+                st.session_state.user = session.user
+            else:
+                sign_out()  # Clear the cookie if session is invalid
+        else:
+            # Don't call sign_out() here, just ensure user is not in session state
+            if 'user' in st.session_state:
+                del st.session_state.user
+
+# Run auth check at the start
+check_auth()
+
+# # Logout button in sidebar
+# if 'user' in st.session_state and st.sidebar.button("Logout"):
+#     sign_out()
+#     st.rerun()
+
+# Main app logic
 if 'user' not in st.session_state:
-    # logged_in = controller.get(f'{cookie_name}_logged_in') == 'true'
-    # st.session_state.logged_in = logged_in
-    # if logged_in:
-    controller.set(f'{cookie_name}_logged_in', 'logged_in', max_age=15 * 24 * 60 * 60)
-    print("inside user not in")
-    session = supabase.auth.get_session()
-    if session and session.user:
-        print(session)
-        st.session_state.user = session.user
-    else:
-        sign_out()  # Clear the cookie if session is invalid
-    # else:
-    #     st.session_state.user = None
-
-logged_in = controller.get(f'{cookie_name}_logged_in')
-if logged_in != 'logged_in':
     st.title("Welcome to Stock Tikr")
     tab1, tab2 = st.tabs(["Login", "Sign Up"])
 
@@ -111,8 +114,7 @@ if logged_in != 'logged_in':
             password = st.text_input("Password", type="password")
             if st.form_submit_button("Login"):
                 response = sign_in(email, password)
-                if response.user:
-                    st.session_state.user = response.user
+                if response and response.user:
                     st.success("Logged in successfully!")
                     st.experimental_rerun()
                 else:
@@ -140,10 +142,5 @@ else:
         st.session_state.selected_tickers = ["AAPL", "GOOGL", "AMZN", "MSFT", "TSLA", "FB"]
 
     init_db()
-
-    # if st.sidebar.button("Logout"):
-    #     sign_out()
-    #     st.session_state.user = None
-    #     st.experimental_rerun()
 
     st.switch_page("pages/Quarterly.py")
